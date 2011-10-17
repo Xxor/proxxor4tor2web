@@ -405,7 +405,7 @@ if($incomming_port === 443){
 	// block the connection until SSL is done.
 	stream_set_blocking ($client_socket, true); 
 	// Enable encryption
-	if(!stream_socket_enable_crypto($client_socket, true, STREAM_CRYPTO_METHOD_SSLv23_SERVER)){
+	if(!stream_socket_enable_crypto($client_socket, true, STREAM_CRYPTO_METHOD_TLS_SERVER)){
 		// Debug errors
 		while ($ssl_error = openssl_error_string())debug_this($ssl_error);
 		gracefully_terminate_child();
