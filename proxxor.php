@@ -388,12 +388,18 @@ if($incomming_port === 443){
 	//stream_context_set_option($client_socket, 'ssl', 'allow_self_signed', true);
 	//stream_context_set_option($client_socket, 'ssl', 'verify_peer', false);	
 	
-	// Perfect Forward Secrecy
-	// Someone qualified should take a look at this.
-	// kEDH - cipher suites using ephemeral DH key agreement.
+	// Forward Secrecy
 	// http://www.openssl.org/docs/apps/ciphers.html#CIPHER_LIST_FORMAT
 	// http://se.php.net/manual/en/context.ssl.php
-	//stream_context_set_option($client_socket, 'ssl', 'ciphers', 'kEDH');
+	
+	//'kEDH+AES+HIGH:kEDH+3DES+HIGH@STRENGTH' roughtly translates to:
+	// (cipher suites using ephemeral DH key agreement AND cipher suites
+	// using AES AND those with key lengths larger than 128 bits, and some
+	// cipher suites with 128-bit keys) OR (cipher suites using ephemeral DH key
+	// agreement AND cipher suites using triple DES AND those with key lengths
+	// larger than 128 bits, and some cipher suites with 128-bit keys) @ Sort by strength
+	
+	stream_context_set_option($client_socket, 'ssl', 'ciphers', 'kEDH+AES+HIGH:kEDH+3DES+HIGH@STRENGTH');
 	
 	
 	// block the connection until SSL is done.
