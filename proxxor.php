@@ -567,18 +567,6 @@ if(ord($buf[0]) !== 5){
 	gracefully_terminate_child();
 }
 if(ord($buf[1]) !== 0 ){
-	/*
-	$socks5errors = array(	0 => 'Request granted',
-							1 => 'General failure',
-							2 => 'Connection not allowed by ruleset',
-							3 => 'Network unreachable',
-							4 => 'Host unreachable',
-							5 => 'Connection refused by destination host',
-							6 => 'TTL expired',
-							7 => 'Command not supported / protocol error',
-							8 => 'Address type not supported'
-	);
-	*/
 	$socks5errors = array(	0 => 'Request granted',
 							1 => 'Temporarily unable to communicate with '.$host_name,
 							2 => 'Temporarily unable to communicate with '.$host_name,
@@ -590,7 +578,7 @@ if(ord($buf[1]) !== 0 ){
 							8 => 'Address type not supported'
 	);
 	//fwrite($client_socket, error_response('502 Bad Gateway',"Upstream proxy returned error ".(ord($buf[1])%9)." '".$socks5errors[ord($buf[1])%9]."'."));
-	fwrite($client_socket, error_response('502 Bad Gateway',"Error(".(ord($buf[1])%9)."): ".$socks5errors[ord($buf[1])%9]));
+	fwrite($client_socket, error_response('502 Bad Gateway',"Tor error(".(ord($buf[1])%9)."): ".$socks5errors[ord($buf[1])%9]));
 	gracefully_terminate_child();
 }
 
