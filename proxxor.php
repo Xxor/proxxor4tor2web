@@ -79,25 +79,27 @@ $conf_file = '/etc/proxxor.conf';
 
 // Default settings.
 $GLOBALS = array(
-    'IP'					=> '0.0.0.0',
-    'PORT'					=> '80,443',
-    'DOMAINNAME' 			=> '',
-    'MAXCONNECTIONS' 		=> 100,
-    'CONNECTIONTIMEOUT'		=> 120,
-    'USESYSLOG'				=> false,
-    'ACCESSLOGFILE'			=> '',
-    'TIMEZONE'				=> '',
-    'LOGLEVEL'				=> LOG_NOTICE,
-    'CHROOTDIRECTORY'		=> '',
-    'RUNASUSER'				=> '',
-    'PEMPASSPHRASE'			=> '',
-    'PEMFILE'				=> '',
-    'STREAMWRITEBUFFER'		=> 8192,
-	'STREAMWRITECHUNK'		=> 4096,
-    'SOCKS5IP'				=> '127.0.0.1',
-    'SOCKS5PORT'			=> 1080,
-	'SOCKS5OPTIMISTICDATA'	=> false,
-	'DEBUGMODE'				=> false
+    'IP'                    => '0.0.0.0',
+    'PORT'                  => '80,443',
+    'DOMAINNAME'            => '',
+    'MAXCONNECTIONS'        => 100,
+    'CONNECTIONTIMEOUT'     => 120,
+    'USESYSLOG'             => false,
+    'ACCESSLOGFILE'         => '',
+	'ACCESSLOGFORMAT'       => '[%1$s][%4$s:%5$s > %6$s:%8$s][%3$f] %9$s',
+    'TIMEZONE'              => '',
+	'DATEFORMAT'            => DATE_RFC2822,
+    'LOGLEVEL'              => LOG_NOTICE,
+    'CHROOTDIRECTORY'       => '',
+    'RUNASUSER'             => '',
+    'PEMPASSPHRASE'         => '',
+    'PEMFILE'               => '',
+    'STREAMWRITEBUFFER'     => 8192,
+	'STREAMWRITECHUNK'      => 4096,
+    'SOCKS5IP'              => '127.0.0.1',
+    'SOCKS5PORT'            => 1080,
+	'SOCKS5OPTIMISTICDATA'  => false,
+	'DEBUGMODE'             => false
 );
 
 if(file_exists($conf_file) && is_readable($conf_file)){
@@ -286,8 +288,8 @@ while(1) {
 	  MM       ,pm9MM    MM    8M""""""  MM    MM  MM         MM 8M     M8 8M     M8 MM    M8 
 	  MM      8M   MM    MM    YM.    ,  MM    MM  MM         MM YA.   ,A9 YA.   ,A9 MM   ,AP 
 	.JMML.    `Moo9^Yo..JMML.   `Mbmmd'.JMML  JMML.`Mbmo    .JMML.`Ybmd9'   `Ybmd9'  MMbmmd'  
-																					 MM       
-																				   .JMM*/
+	                                                                                 MM       
+	                                                                               .JMM*/
 	while(1){
 		while (($chldpid = pcntl_wait($status,WNOHANG)) > 0) {
 			debug_this("Child terminated. PID:$chldpid");
@@ -656,6 +658,8 @@ stream_set_blocking($host_socket, false);
 
 
 
+
+
 // Accesslog
 accesslog_this("Connected");
 if(is_callable('setproctitle'))setproctitle(SOFTWARE." ".VERSION.": ".$client_ipport." connected");
@@ -676,8 +680,8 @@ while(!feof($host_socket) && !feof($client_socket)){
 	MM.           MM    MM    MM    MM 8MI    MM        MM 8M     M8 8M     M8 MM    M8 
 	`Mb.     ,'   MM    MM    MM    MM `Mb    MM        MM YA.   ,A9 YA.   ,A9 MM   ,AP 
 	  `"bmmmd'  .JMML  JMML..JMML..JMML.`Wbmd"MML.    .JMML.`Ybmd9'   `Ybmd9'  MMbmmd'  
-																			   MM       
-																			 .JMM*/
+	                                                                           MM       
+	                                                                         .JMM*/
 	// Read incomming data into a buffer.
 	if($GLOBALS['STREAMWRITECHUNK'] > strlen($buffer['request_tmp'])) $buffer['request'] = $buffer['request_tmp'].fread($client_socket,$GLOBALS['STREAMWRITECHUNK']-strlen($buffer['request_tmp']));
 	// Write data.
@@ -1022,14 +1026,17 @@ function log_this($msg, $lvl){
 function accesslog_this($msg){
 	global $LOG_FD, $client_ipport, $host_name, $host_port, $host_ip;
 	if($LOG_FD){
-		$logformat = '[%1$s][PID:%2$u][%3$f][%4$s][%5$s] %6$s'; // Make this a setting in the conf-file when done.
-		$msg = sprintf(	$logformat,
-						date(DATE_RFC2822),
-						posix_getpid(),
-						microtime(true)-$GLOBALS['STARTTIME'],
-						$client_ipport,
-						"$host_name:$host_port",
-						$msg
+		list($client_ip,$client_port) = explode(':',$client_ipport);
+		$msg = sprintf(	$GLOBALS['ACCESSLOGFORMAT'],
+						date($GLOBALS['DATEFORMAT']), // %1$s
+						posix_getpid(), // %2$u
+						microtime(true)-$GLOBALS['STARTTIME'], // %3$f
+						$client_ip, // %4$s
+						$clinet_port, // %5$s
+						$host_name, // %6$s
+						$host_ip, // %7$s
+						$host_port, // %8$s
+						$msg // %9$s
 		);
 		fwrite($LOG_FD, preg_replace("/\s/",' ',$msg)."\n");
 		//fwrite($LOG_FD, '['.date(DATE_RFC2822).'] [PID:'.posix_getpid().'] '.preg_replace("/\s/",' ',$msg)."\n");
@@ -1067,6 +1074,7 @@ function dropPrivilegesTo($user){
 	log_this("Dropped privileges to User id:".posix_getuid()." and Group id:".posix_getgid(),LOG_NOTICE);
 	return true;
 }
+
 
 /*
 *      CLIENT TO SERVER
