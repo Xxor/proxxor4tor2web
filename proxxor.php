@@ -65,8 +65,8 @@ pkg_add pecl-proctitle
 ln -fs /var/www/conf/php5.sample/proctitle.ini /var/www/conf/php5/proctitle.ini
 
 
-reprox() 
-{ 
+reprox()
+{
 	kill -INT `ps ax | grep Proxxor | grep Ss | grep -v grep | awk '{print $1}'`
 	sleep 5
 	proxxor.php
@@ -84,18 +84,23 @@ $GLOBALS = array(
 	'DOMAINNAME'            => '',
 	'MAXCONNECTIONS'        => 100,
 	'CONNECTIONTIMEOUT'     => 120,
+	'DESTINATIONPORT'       => 0,
 	'USESYSLOG'             => false,
+	'LOGLEVEL'              => LOG_NOTICE,
 	'ACCESSLOGFILE'         => '',
 	'ACCESSLOGFORMAT'       => '[%1$s][%4$s:%5$s > %6$s:%8$s][%3$f] %9$s',
 	'TIMEZONE'              => '',
 	'DATEFORMAT'            => DATE_RFC2822,
-	'LOGLEVEL'              => LOG_NOTICE,
 	'CHROOTDIRECTORY'       => '',
 	'RUNASUSER'             => '',
+	'DETECTSECURE'          => true,
+	'FORWARDSECURE'         => false,
 	'PEMPASSPHRASE'         => '',
 	'PEMFILE'               => '',
 	'STREAMWRITEBUFFER'     => 8192,
 	'STREAMWRITECHUNK'      => 4096,
+	'AUTOONIONDOMAIN'       => false,
+	'USESOCKS5'             => false,
 	'SOCKS5IP'              => '127.0.0.1',
 	'SOCKS5PORT'            => 1080,
 	'SOCKS5OPTIMISTICDATA'  => false,
@@ -213,14 +218,14 @@ if(!stream_filter_register("htmlproxy_response", "htmlproxy_response_filter")){
 }
 
 if(!is_callable('gzdecode')){
-	//ini_set('allow_url_include','On'); // To use data url in gzdecode(). 
+	//ini_set('allow_url_include','On'); // To use data url in gzdecode().
 	ini_set('allow_url_fopen','On'); // This might not work, so -d allow_url_fopen=On was added in the shebang.
 
-	//if(!ini_get('allow_url_include') || strtolower(ini_get('allow_url_include')) === 'off'){  
+	//if(!ini_get('allow_url_include') || strtolower(ini_get('allow_url_include')) === 'off'){
 	//	log_this('PHP setting "allow_url_include" is set to "'.ini_get('allow_url_include').'". Turn it on or there will be problems with compressed webpages.', LOG_WARNING);
 	//}
 	
-	if(!ini_get('allow_url_fopen') || strtolower(ini_get('allow_url_fopen')) === 'off'){  
+	if(!ini_get('allow_url_fopen') || strtolower(ini_get('allow_url_fopen')) === 'off'){
 		log_this('PHP setting "allow_url_fopen" is set to "'.ini_get('allow_url_fopen').'". Turn it on or there will be problems with compressed webpages.', LOG_WARNING);
 	}
 	// Ugly, but what can one do?
@@ -281,14 +286,14 @@ if (function_exists('gc_enable')) {
 
 
 while(1) {
-	/*MM"""Mq.                                     mm       `7MM                              
-	  MM   `MM.                                    MM         MM                              
-	  MM   ,M9 ,6"Yb.  `7Mb,od8 .gP"Ya `7MMpMMMb.mmMMmm       MM  ,pW"Wq.   ,pW"Wq.`7MMpdMAo. 
-	  MMmmdM9 8)   MM    MM' "',M'   Yb  MM    MM  MM         MM 6W'   `Wb 6W'   `Wb MM   `Wb 
-	  MM       ,pm9MM    MM    8M""""""  MM    MM  MM         MM 8M     M8 8M     M8 MM    M8 
-	  MM      8M   MM    MM    YM.    ,  MM    MM  MM         MM YA.   ,A9 YA.   ,A9 MM   ,AP 
-	.JMML.    `Moo9^Yo..JMML.   `Mbmmd'.JMML  JMML.`Mbmo    .JMML.`Ybmd9'   `Ybmd9'  MMbmmd'  
-	                                                                                 MM       
+	/*MM"""Mq.                                     mm       `7MM
+	  MM   `MM.                                    MM         MM
+	  MM   ,M9 ,6"Yb.  `7Mb,od8 .gP"Ya `7MMpMMMb.mmMMmm       MM  ,pW"Wq.   ,pW"Wq.`7MMpdMAo.
+	  MMmmdM9 8)   MM    MM' "',M'   Yb  MM    MM  MM         MM 6W'   `Wb 6W'   `Wb MM   `Wb
+	  MM       ,pm9MM    MM    8M""""""  MM    MM  MM         MM 8M     M8 8M     M8 MM    M8
+	  MM      8M   MM    MM    YM.    ,  MM    MM  MM         MM YA.   ,A9 YA.   ,A9 MM   ,AP
+	.JMML.    `Moo9^Yo..JMML.   `Mbmmd'.JMML  JMML.`Mbmo    .JMML.`Ybmd9'   `Ybmd9'  MMbmmd'
+	                                                                                 MM
 	                                                                               .JMM*/
 	while(1){
 		while (($chldpid = pcntl_wait($status,WNOHANG)) > 0) {
@@ -340,17 +345,17 @@ while(1) {
 	// Parent
 	$children[$pid] = $client_ipport; // Store pid and clients ip:port
 }
- 
-  /*8"""bgd `7MM          db  `7MM      `7MM        mm   `7MM                                      `7MM  
-.dP'     `M   MM                MM        MM        MM     MM                                        MM  
-dM'       `   MMpMMMb.  `7MM    MM   ,M""bMM      mmMMmm   MMpMMMb.  `7Mb,od8 .gP"Ya   ,6"Yb.   ,M""bMM  
-MM            MM    MM    MM    MM ,AP    MM        MM     MM    MM    MM' "',M'   Yb 8)   MM ,AP    MM  
-MM.           MM    MM    MM    MM 8MI    MM        MM     MM    MM    MM    8M""""""  ,pm9MM 8MI    MM  
-`Mb.     ,'   MM    MM    MM    MM `Mb    MM        MM     MM    MM    MM    YM.    , 8M   MM `Mb    MM  
-  `"bmmmd'  .JMML  JMML..JMML..JMML.`Wbmd"MML.      `Mbmo.JMML  JMML..JMML.   `Mbmmd' `Moo9^Yo.`Wbmd"M*/
-  
 
-  
+  /*8"""bgd `7MM          db  `7MM      `7MM        mm   `7MM                                      `7MM
+.dP'     `M   MM                MM        MM        MM     MM                                        MM
+dM'       `   MMpMMMb.  `7MM    MM   ,M""bMM      mmMMmm   MMpMMMb.  `7Mb,od8 .gP"Ya   ,6"Yb.   ,M""bMM
+MM            MM    MM    MM    MM ,AP    MM        MM     MM    MM    MM' "',M'   Yb 8)   MM ,AP    MM
+MM.           MM    MM    MM    MM 8MI    MM        MM     MM    MM    MM    8M""""""  ,pm9MM 8MI    MM
+`Mb.     ,'   MM    MM    MM    MM `Mb    MM        MM     MM    MM    MM    YM.    , 8M   MM `Mb    MM
+  `"bmmmd'  .JMML  JMML..JMML..JMML.`Wbmd"MML.      `Mbmo.JMML  JMML..JMML.   `Mbmmd' `Moo9^Yo.`Wbmd"M*/
+
+
+
 $buffer = array('request' => '', 'request_tmp' => '', 'response' => '', 'response_tmp' => '');// Set up buffers
 
 // Catch signals
@@ -405,7 +410,7 @@ if($incomming_port === 443){
 	
 	
 	// block the connection until SSL is done.
-	stream_set_blocking ($client_socket, true); 
+	stream_set_blocking ($client_socket, true);
 	// Enable encryption
 	if(!stream_socket_enable_crypto($client_socket, true, STREAM_CRYPTO_METHOD_TLS_SERVER)){
 		// Debug errors
@@ -466,7 +471,7 @@ if(!preg_match('/(^|\.)([A-z234567]{16})$/',$host_name,$m)){ // Onion
 	$host_name .= '.onion';
 	// tor2web.org Blocklist. Redirect to disney.com :P
 	// TODO Move this to the conf-file, or to a sepparate file.
-	if(in_array(md5($m[2]), array(	'f32f7088f1d225b6b5c56d5ec4e5e6c9', 
+	if(in_array(md5($m[2]), array(	'f32f7088f1d225b6b5c56d5ec4e5e6c9',
 									'd1faaa36d01964d1f987fe992006ed23',
 									'9b666b99f9f709771180752fac4e784e',
 									'fa2f9722a68806e3536a1b9b41783359',
@@ -516,7 +521,7 @@ if(!$host_socket = stream_socket_client("tcp://".$GLOBALS['SOCKS5IP'].":".$GLOBA
 	gracefully_terminate_child();
 }
 stream_set_write_buffer($host_socket,$GLOBALS['STREAMWRITEBUFFER']); // Set the streams writebuffer.
-stream_set_blocking($host_socket, true); 
+stream_set_blocking($host_socket, true);
 debug_this("Connected to socks5 proxy ".$GLOBALS['SOCKS5IP'].":".$GLOBALS['SOCKS5PORT'].".");
 debug_this("Negotiationg method with socks5 proxy.");
 if(3 !== fwrite($host_socket,"\x05\x01\x00")){
@@ -617,13 +622,13 @@ switch(ord($buf[3])){
 			//usleep(1000);
 			$buf .= fread($host_socket,10-strlen($buf));
 		}
-		debug_this("Got: ".str2hex($buf)); 
+		debug_this("Got: ".str2hex($buf));
 		$host_ip = ord($buf[4]).'.'.ord($buf[5]).'.'.ord($buf[6]).'.'.ord($buf[7]);
 		debug_this("IP:$host_ip");
 	break;
 	case 3: // Domain name
 		//$buf .= fread($host_socket,7-strlen($buf));
-		while(strlen($buf) < 7){ 
+		while(strlen($buf) < 7){
 			//usleep(1000);
 			$buf .= fread($host_socket,7-strlen($buf));
 		}
@@ -653,7 +658,7 @@ if(in_array($host_name, $loop_blocklist)){
 }
 
 debug_this("Connected in ".round(microtime(true)-$GLOBALS['STARTTIME'],7)." sec to $host_name:$host_port throught socks5 proxy ".$GLOBALS['SOCKS5IP'].":".$GLOBALS['SOCKS5PORT'].".");
-stream_set_blocking($host_socket, false); 
+stream_set_blocking($host_socket, false);
 
 
 
@@ -673,14 +678,14 @@ debug_this("Connection to $host_name is open.");
 stream_filter_append($host_socket, "htmlproxy_response", STREAM_FILTER_READ, array('proxy_hostname' => $GLOBALS['DOMAINNAME']));
 
 while(!feof($host_socket) && !feof($client_socket)){
-	  /*8"""bgd `7MM          db  `7MM      `7MM      `7MM                              
-	.dP'     `M   MM                MM        MM        MM                              
-	dM'       `   MMpMMMb.  `7MM    MM   ,M""bMM        MM  ,pW"Wq.   ,pW"Wq.`7MMpdMAo. 
-	MM            MM    MM    MM    MM ,AP    MM        MM 6W'   `Wb 6W'   `Wb MM   `Wb 
-	MM.           MM    MM    MM    MM 8MI    MM        MM 8M     M8 8M     M8 MM    M8 
-	`Mb.     ,'   MM    MM    MM    MM `Mb    MM        MM YA.   ,A9 YA.   ,A9 MM   ,AP 
-	  `"bmmmd'  .JMML  JMML..JMML..JMML.`Wbmd"MML.    .JMML.`Ybmd9'   `Ybmd9'  MMbmmd'  
-	                                                                           MM       
+	  /*8"""bgd `7MM          db  `7MM      `7MM      `7MM
+	.dP'     `M   MM                MM        MM        MM
+	dM'       `   MMpMMMb.  `7MM    MM   ,M""bMM        MM  ,pW"Wq.   ,pW"Wq.`7MMpdMAo.
+	MM            MM    MM    MM    MM ,AP    MM        MM 6W'   `Wb 6W'   `Wb MM   `Wb
+	MM.           MM    MM    MM    MM 8MI    MM        MM 8M     M8 8M     M8 MM    M8
+	`Mb.     ,'   MM    MM    MM    MM `Mb    MM        MM YA.   ,A9 YA.   ,A9 MM   ,AP
+	  `"bmmmd'  .JMML  JMML..JMML..JMML.`Wbmd"MML.    .JMML.`Ybmd9'   `Ybmd9'  MMbmmd'
+	                                                                           MM
 	                                                                         .JMM*/
 	// Read incomming data into a buffer.
 	if($GLOBALS['STREAMWRITECHUNK'] > strlen($buffer['request_tmp'])) $buffer['request'] = $buffer['request_tmp'].fread($client_socket,$GLOBALS['STREAMWRITECHUNK']-strlen($buffer['request_tmp']));
@@ -721,36 +726,36 @@ debug_this("Going to close the connections now.");
 
 gracefully_terminate_child();
 
-/*P""MM""YMM `7MM                    `7MM"""YMM                  `7MM  
-P'   MM   `7   MM                      MM    `7                    MM  
-     MM        MMpMMMb.  .gP"Ya        MM   d    `7MMpMMMb.   ,M""bMM  
-     MM        MM    MM ,M'   Yb       MMmmMM      MM    MM ,AP    MM  
-     MM        MM    MM 8M""""""       MM   Y  ,   MM    MM 8MI    MM  
-     MM        MM    MM YM.    ,       MM     ,M   MM    MM `Mb    MM  
+/*P""MM""YMM `7MM                    `7MM"""YMM                  `7MM
+P'   MM   `7   MM                      MM    `7                    MM
+     MM        MMpMMMb.  .gP"Ya        MM   d    `7MMpMMMb.   ,M""bMM
+     MM        MM    MM ,M'   Yb       MMmmMM      MM    MM ,AP    MM
+     MM        MM    MM 8M""""""       MM   Y  ,   MM    MM 8MI    MM
+     MM        MM    MM YM.    ,       MM     ,M   MM    MM `Mb    MM
    .JMML.    .JMML  JMML.`Mbmmd'     .JMMmmmmMMM .JMML  JMML.`Wbmd"M*/
- 
 
- 
- 
- 
- 
- 
- 
- 
- 
- 
- 
- 
- 
- 
- 
 
-/*MM"""YMM                                mm     db                             
-  MM    `7                                MM                                    
-  MM   d `7MM  `7MM  `7MMpMMMb.  ,p6"bo mmMMmm `7MM  ,pW"Wq.`7MMpMMMb.  ,pP"Ybd 
-  MM""MM   MM    MM    MM    MM 6M'  OO   MM     MM 6W'   `Wb MM    MM  8I   `" 
-  MM   Y   MM    MM    MM    MM 8M        MM     MM 8M     M8 MM    MM  `YMMMa. 
-  MM       MM    MM    MM    MM YM.    ,  MM     MM YA.   ,A9 MM    MM  L.   I8 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+/*MM"""YMM                                mm     db
+  MM    `7                                MM
+  MM   d `7MM  `7MM  `7MMpMMMb.  ,p6"bo mmMMmm `7MM  ,pW"Wq.`7MMpMMMb.  ,pP"Ybd
+  MM""MM   MM    MM    MM    MM 6M'  OO   MM     MM 6W'   `Wb MM    MM  8I   `"
+  MM   Y   MM    MM    MM    MM 8M        MM     MM 8M     M8 MM    MM  `YMMMa.
+  MM       MM    MM    MM    MM YM.    ,  MM     MM YA.   ,A9 MM    MM  L.   I8
 .JMML.     `Mbod"YML..JMML  JMML.YMbmd'   `Mbmo.JMML.`Ybmd9'.JMML  JMML.M9mmm*/
 
 
@@ -769,7 +774,7 @@ function gracefully_terminate_child(){
 		if(!is_string($buffer['request_tmp']))$buffer['request_tmp'] = substr($buffer['request'], (int)$buffer['request_tmp']);
 		if(!is_string($buffer['response_tmp']))$buffer['response_tmp'] = substr($buffer['response'], (int)$buffer['response_tmp']);
 		stream_set_blocking($client_socket, false);
-		stream_set_blocking($client_socket, false); 
+		stream_set_blocking($client_socket, false);
 		
 		// Timelimit.
 		$i = 0;
@@ -840,7 +845,7 @@ function forcefully_terminate_child(){
 		if(!is_string($buffer['request_tmp']))$buffer['request_tmp'] = substr($buffer['request'], (int)$buffer['request_tmp']);
 		if(!is_string($buffer['response_tmp']))$buffer['response_tmp'] = substr($buffer['response'], (int)$buffer['response_tmp']);
 		stream_set_blocking($client_socket, false);
-		stream_set_blocking($client_socket, false); 
+		stream_set_blocking($client_socket, false);
 		
 		fwrite($host_socket, $buffer['request']); // Empty buffer.
 		stream_socket_shutdown($client_socket,STREAM_SHUT_RD); // Disable further receptions.
@@ -1085,7 +1090,7 @@ class htmlproxy_request_filter extends php_user_filter{
 	//private $stream_body = false;
 	private $proxy_hostname = '';
 	private $content_left = 0;
- 
+
     /* Called when the filter is initialized */
     function onCreate(){
 		debug_this('Creating new htmlproxy_request_filter.');
@@ -1094,7 +1099,7 @@ class htmlproxy_request_filter extends php_user_filter{
 			$this->proxy_hostname = (string)$this->params['proxy_hostname'];
         return true;
     }
- 
+
     /* This is where the actual stream data conversion takes place */
     public function filter($in, $out, &$consumed, $closing){
 
@@ -1164,7 +1169,7 @@ class htmlproxy_request_filter extends php_user_filter{
 		}
 		
 		// Check if we have got all of the headers
-		if(false!==($eoh = strpos($this->buf, "\r\n\r\n"))){ 
+		if(false!==($eoh = strpos($this->buf, "\r\n\r\n"))){
 			$headers = substr($this->buf,0,$eoh+4);
 			$this->buf = substr($this->buf,$eoh+4);
 		}elseif(false!==($eoh = strpos($this->buf, "\n\n"))){
@@ -1410,7 +1415,7 @@ class htmlproxy_response_filter extends php_user_filter{
 						if ($this->chunkbytes===0) {
 							$lineone = strpos($bucket->data, "\r\n", $offset);
 							// Get chunk length, ignore MIME-like extensions
-							$chunklen = trim(current(explode(';', substr($bucket->data, $offset, $lineone-$offset), 2))); 
+							$chunklen = trim(current(explode(';', substr($bucket->data, $offset, $lineone-$offset), 2)));
 							// Sanitycheck
 							if (!ctype_xdigit($chunklen))return PSFS_ERR_FATAL;
 							// Convert hex to decimal
@@ -1482,7 +1487,7 @@ class htmlproxy_response_filter extends php_user_filter{
 				}
 				while ($bucket) {
 					//$consumed += $bucket->datalen;
-					if(false!==stripos($this->tmpbuf.$bucket->data,"\r\n0\r\n\r\n")){ 
+					if(false!==stripos($this->tmpbuf.$bucket->data,"\r\n0\r\n\r\n")){
 						// Found the end of a chunked content body
 						// Position -6 byted for tmpbuf +7 for length of matchstring =1
 						$end = stripos($this->tmpbuf.$bucket->data,"\r\n0\r\n\r\n") + 1;
@@ -1577,7 +1582,7 @@ class htmlproxy_response_filter extends php_user_filter{
 			$consumed += $bucket->datalen;
 		}
 		// Check if we have got all of the headers
-		if( false === ($eoh = strpos($this->buf, "\r\n\r\n"))){ 
+		if( false === ($eoh = strpos($this->buf, "\r\n\r\n"))){
 			//debug_this("Read ".strlen($this->buf)." bytes, no header yet.");
 			//debug_this(substr($this->buf,0,500));
 			//var_dump($this);
@@ -1662,7 +1667,7 @@ class htmlproxy_response_filter extends php_user_filter{
 			// Check fore content types with links in need of a rewrite.
 			if((false!==stripos($this->content_type,'html') || false!==stripos($this->content_type,'css'))
 			// But only if there actually are some content.
-			&& ($this->content_left || $this->ischunked) ){ 
+			&& ($this->content_left || $this->ischunked) ){
 				// Buffer the content body so it can be proxified.
 				$this->buffer_content = true;
 				// We are not planning to "rechunk" a "dechunked" content body. Remove that header
