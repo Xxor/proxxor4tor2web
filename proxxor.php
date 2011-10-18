@@ -1005,7 +1005,7 @@ function accesslog_this($msg){
 						posix_getpid(), // %2$u
 						microtime(true)-$GLOBALS['STARTTIME'], // %3$f
 						$client_ip, // %4$s
-						$clinet_port, // %5$s
+						$client_port, // %5$s
 						$host_name, // %6$s
 						$host_ip, // %7$s
 						$host_port, // %8$s
