@@ -1,0 +1,31 @@
+ -------------------------
+ README UNDER CONSTRUCTION
+ -------------------------
+
+
+
+
+OpenBSD istall
+
+export PKG_PATH=ftp://ftp.eu.openbsd.org/pub/OpenBSD/4.9/packages/`machine -a`/
+pkg_add php5-core
+ln -s /var/www/conf/modules.sample/php5.conf /var/www/conf/modules
+pkg_add pecl-pcntl
+ln -fs /var/www/conf/php5.sample/pcntl.ini /var/www/conf/php5/pcntl.ini
+pkg_add pecl-chroot
+ln -fs /var/www/conf/php5.sample/chroot.ini /var/www/conf/php5/chroot.ini
+pkg_add pecl-proctitle
+ln -fs /var/www/conf/php5.sample/proctitle.ini /var/www/conf/php5/proctitle.ini
+
+
+reprox()
+{
+	kill -INT `ps ax | grep Proxxor | grep Ss | grep -v grep | awk '{print $1}'`
+	sleep 5
+	proxxor.php
+}
+
+
+
+
+http://www.php.net/manual/en/openssl.installation.php

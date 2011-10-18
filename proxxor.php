@@ -53,26 +53,6 @@ declare(ticks = 1);
 error_reporting(E_ALL);
 set_time_limit(0);
 
-/*
-http://www.php.net/manual/en/openssl.installation.php
-
-
-pkg_add php5-core
-pkg_add pecl-pcntl
-ln -fs /var/www/conf/php5.sample/pcntl.ini /var/www/conf/php5/pcntl.ini
-pkg_add pecl-chroot
-pkg_add pecl-proctitle
-ln -fs /var/www/conf/php5.sample/proctitle.ini /var/www/conf/php5/proctitle.ini
-
-
-reprox()
-{
-	kill -INT `ps ax | grep Proxxor | grep Ss | grep -v grep | awk '{print $1}'`
-	sleep 5
-	proxxor.php
-}
-*/
-
 // TODO, Accept commandline options
 
 $conf_file = '/etc/proxxor.conf';
