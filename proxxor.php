@@ -77,7 +77,7 @@ $GLOBALS = array(
 	'FORWARDSECURE'         => false,
 	'PEMPASSPHRASE'         => '',
 	'PEMFILE'               => '',
-	'STREAMWRITEBUFFER'     => 8192,
+	'STREAMRWBUFFER'        => 8192,
 	'STREAMWRITECHUNK'      => 4096,
 	'AUTOONIONDOMAIN'       => false,
 	'USESOCKS5'             => false,
@@ -353,8 +353,9 @@ debug_this("New connection from ".$client_ipport);
 
 unset($children,$proxy_sockets,$socket,$chldpid,$pid,$status); // Unset unused variables to free some memory.
 
-stream_set_write_buffer($client_socket,$GLOBALS['STREAMWRITEBUFFER']); // Set the streams writebuffer.
-stream_set_blocking ($client_socket, false); // Non-blocking connection
+stream_set_write_buffer($client_socket,$GLOBALS['STREAMRWBUFFER']); // Set the streams writebuffer.
+if(is_callable('stream_set_read_buffer'))stream_set_read_buffer($client_socket,$GLOBALS['STREAMRWBUFFER']);
+stream_set_blocking($client_socket, false); // Non-blocking connection
 
 $incomming_port = (int)@array_pop(explode(':',stream_socket_get_name($client_socket,false))); // Extract port from "1.2.3.4:80", the port our client used to connected to us.
 $host_port = 80;
@@ -412,18 +413,18 @@ stream_filter_append($client_socket, "htmlproxy_request", STREAM_FILTER_READ, ar
 //stream_set_write_buffer($client_socket, 0);
 
 // Find host
-$buffer['request'] = fread($client_socket,8192);
-while(!preg_match('/\nHost:([^\r\n]+)\r?\n/i', $buffer['request'], $m)){
-	if(strpos($buffer['request'], "\r\n\r\n")!==false || strpos($buffer['request'], "\n\n")!==false){
+$buffer['request_tmp'] = fread($client_socket,8192);
+while(!preg_match('/\nHost:([^\r\n]+)\r?\n/i', $buffer['request_tmp'], $m)){
+	if(strpos($buffer['request_tmp'], "\r\n\r\n")!==false || strpos($buffer['request_tmp'], "\n\n")!==false){
 		debug_this("No host header.");
 		// Send back a response containg an error message.
 		fwrite($client_socket, error_response('400 Bad Request',"No host header found. Can not forward the request."));
 		gracefully_terminate_child();
 	}
-	debug_this("Have not found host in \$buffer['request'] yet.");
+	debug_this("Have not found host in \$buffer['request_tmp'] yet.");
 	usleep(1000);
 	//sleep(2);
-	$buffer['request'] .= fread($client_socket,8192);
+	$buffer['request_tmp'] .= fread($client_socket,8192);
 	// Kolla timeout
 }
 
@@ -500,7 +501,8 @@ if(!$host_socket = stream_socket_client("tcp://".$GLOBALS['SOCKS5IP'].":".$GLOBA
 	fwrite($client_socket, error_response('500 Internal Server Error',"Failed to connect to socks5 proxy ".$GLOBALS['SOCKS5IP'].":".$GLOBALS['SOCKS5PORT']));
 	gracefully_terminate_child();
 }
-stream_set_write_buffer($host_socket,$GLOBALS['STREAMWRITEBUFFER']); // Set the streams writebuffer.
+stream_set_write_buffer($host_socket,$GLOBALS['STREAMRWBUFFER']); // Set the streams writebuffer.
+if(is_callable('stream_set_read_buffer'))stream_set_read_buffer($host_socket,$GLOBALS['STREAMRWBUFFER']);
 stream_set_blocking($host_socket, true);
 debug_this("Connected to socks5 proxy ".$GLOBALS['SOCKS5IP'].":".$GLOBALS['SOCKS5PORT'].".");
 debug_this("Negotiationg method with socks5 proxy.");
@@ -544,11 +546,8 @@ if($bytes !== fwrite($host_socket,$buf)){
 
 // Optimistic data
 if($GLOBALS['SOCKS5OPTIMISTICDATA']){
-	if($buffer['request_tmp'] = fwrite($host_socket,$buffer['request'])){
-		$buffer['response'] = substr($buffer['response'], (int)$buffer['response_tmp']);
-	}
-	$buffer['request_tmp'] = '';
-	
+	// Send all data we can.
+	$buffer['request_tmp'] = substr($buffer['request_tmp'], (int)fwrite($host_socket,$buffer['request_tmp']));
 }
 
 $buf = fread($host_socket,4);
@@ -660,11 +659,13 @@ while(!feof($host_socket) && !feof($client_socket)){
 	// Write data.
 	if(false===($buffer['request_tmp'] = @fwrite($host_socket, $buffer['request']))){
 		//Error
+		debug_this("Error while tranmiting request");
 		if($error = socket_last_error())log_this('Sending to host caused an Error on line '.__LINE__.': '.socket_strerror($error),LOG_ERR);
 		while ($error = openssl_error_string())log_this('Sending to host caused an SSL Error on line '.__LINE__.': '.$error,LOG_ERR);
 		// Ressetting, try again.
 		$buffer['request_tmp'] = 0;
 	}
+	if($buffer['request_tmp'])debug_this($buffer['request_tmp']." bytes of request transmited.");
 	// Remove written data from the buffer.
 	$buffer['request_tmp'] = substr($buffer['request'], $buffer['request_tmp']);
 	
@@ -673,11 +674,13 @@ while(!feof($host_socket) && !feof($client_socket)){
 	// Write data.
 	if(false===($buffer['response_tmp'] = @fwrite($client_socket, $buffer['response']))){
 		//Error
+		debug_this("Error while tranmiting response");
 		if($error = socket_last_error())log_this('Sending to client caused an Error on line '.__LINE__.': '.socket_strerror($error),LOG_ERR);
 		while ($error = openssl_error_string())log_this('Sending to client caused an SSL Error on line '.__LINE__.': '.$error,LOG_ERR);
 		// Ressetting, try again.
 		$buffer['response_tmp'] = 0;
 	}
+	if($buffer['response_tmp'])debug_this($buffer['response_tmp']." bytes of response transmited.");
 	// Remove written data from the buffer.
 	$buffer['response_tmp'] = substr($buffer['response'], $buffer['response_tmp']);
 	
@@ -1174,14 +1177,14 @@ class htmlproxy_request_filter extends php_user_filter{
 			
 		//}
 		// Content-Length
-		if(preg_match('/\nContent-Length:\s?(\d+)/i',$headers,$m)){
+		if(preg_match('/\nContent-Length:\s*(\d+)/i',$headers,$m)){
 			$this->content_left = (int)$m[1];
 		}//else{
 			debug_this("Content-Length not specified.");
 		//}
 			
 		//$headers = preg_replace('/^Host:\s?(.*?)\.'.preg_quote($this->proxy_hostname,'/').'.*(\r?)$/m', 'Host: \\1\\2', $headers, 1);
-		$headers = preg_replace('/(\nHost:\s?[A-z0-9\.-]*)\.'.preg_quote($this->proxy_hostname,'/').'/i', '\\1', $headers, 1);
+		$headers = preg_replace('/(\nHost:\s*[A-z0-9\.-]*)\.'.preg_quote($this->proxy_hostname,'/').'/i', '\\1', $headers, 1);
 		
 		//$buffer['request'] = preg_replace('/^Host:.*(\r?)$/m', "Host: $host_name\\1", $buffer['request'], 1);
 		
@@ -1213,7 +1216,7 @@ class htmlproxy_request_filter extends php_user_filter{
 		//$bucket->data = $headers;
 		//$bucket->datalen = strlen($bucket->data);
 		//debug_this(str2hex($bucket->data));
-		//debug_this($bucket->data);
+		debug_this($bucket->data);
 		//stream_bucket_append($out, $bucket);
 		
 		
@@ -1589,7 +1592,7 @@ class htmlproxy_response_filter extends php_user_filter{
 		// Implement -> http://www.jmarshall.com/easy/http/#http1.1s2
 
 		// Find content length
-		if(preg_match('/\nContent-Length:\s?(\d+)/i',$headers,$m)){
+		if(preg_match('/\nContent-Length:\s*(\d+)/i',$headers,$m)){
 			$this->content_left = (int)$m[1];
 			//$this->content_length = (int)$m[1];
 			debug_this("Content length: {$this->content_left}.");
@@ -1601,7 +1604,7 @@ class htmlproxy_response_filter extends php_user_filter{
 			//$this->content_length = 0;
 		//}
 		
-		if(preg_match('/\nContent-Encoding:\s?([a-z]+)/i',$headers,$m)){
+		if(preg_match('/\nContent-Encoding:\s*([a-z]+)/i',$headers,$m)){
 			$this->content_encoding = strtolower($m[1]);
 			debug_this("Content encoding: {$this->content_encoding}.");
 		}
@@ -1611,13 +1614,13 @@ class htmlproxy_response_filter extends php_user_filter{
 		$headers = preg_replace('/\nSet-Cookie:.*?;\s?Domain=[A-z0-9-\.]+/i','\\0.'.$this->proxy_hostname,$headers);
 		
 		// Rewrite location and other redirects
-		if(preg_match('/(\nLocation:\s?|\nRefresh:\s\d+;\surl=)([^\r\n]*)/i',$headers,$m)){
+		if(preg_match('/(\nLocation:\s*|\nRefresh:\s*\d+;\surl=)([^\r\n]*)/i',$headers,$m)){
 			debug_this(print_r($m,true));
 			$headers = str_replace($m[0], $m[1].$this->proxifyURL($m[2]), $headers);
 			//$headers = preg_replace('/(\nLocation:\s?|\nRefresh:\s\d+;\s?url=)([^\r\n]*)/i','\\1'.$this->proxifyURL($m[2]).'\\3',$headers);
 		}
 		
-		if(preg_match('/\nTransfer-Encoding:[^\r\n]chunked/i',$headers)){
+		if(preg_match('/\nTransfer-Encoding:\s*chunked/i',$headers)){
 			$this->ischunked = true;
 			
 			debug_this("Transfer-Encoding chunked.");
@@ -1629,7 +1632,7 @@ class htmlproxy_response_filter extends php_user_filter{
 		}
 		
 		// Find content type
-		if(preg_match('/\nContent-Type:\s?([^\s;\r\n]+)(;\s?charset=([^\s;\r\n]+))?/mi',$headers,$m)){
+		if(preg_match('/\nContent-Type:\s*([^\s;\r\n]+)(;\s?charset=([^\s;\r\n]+))?/i',$headers,$m)){
 			$this->content_type = $m[1];
 			debug_this("Content type: {$this->content_type}.");
 			// Check fore content types with links in need of a rewrite.
@@ -1639,7 +1642,7 @@ class htmlproxy_response_filter extends php_user_filter{
 				// Buffer the content body so it can be proxified.
 				$this->buffer_content = true;
 				// We are not planning to "rechunk" a "dechunked" content body. Remove that header
-				if($this->ischunked)$headers = preg_replace('/\r?\nTransfer-Encoding:[^\r\n]*?chunked[^\r\n]*/mi','',$headers,1);
+				if($this->ischunked)$headers = preg_replace('/\r?\nTransfer-Encoding:\s*chunked[^\r\n]*/i','',$headers,1);
 				// Must retain the header till we know the correct content length.
 				$this->headers = $headers;
 				debug_this("Buffering ".strlen($headers)." bytes response header.");
@@ -1658,10 +1661,9 @@ class htmlproxy_response_filter extends php_user_filter{
 		debug_this("Returning ".strlen($headers)." bytes response header.");
 	
 		//if(strlen($headers)<1000){
-		//	debug_this($headers);
+			debug_this($headers);
 		//	debug_this(str2hex($headers));
 		//}
-		
 		
 		//$bucket = stream_bucket_new($this->stream, '');
 		//$bucket->data = $headers;
@@ -1790,7 +1792,7 @@ class htmlproxy_response_filter extends php_user_filter{
 		
 		// Decompress
 		if($this->content_encoding){
-			debug_this("Buffer b4 decompression: ".str2hex($buffert));
+			//debug_this("Buffer b4 decompression: ".str2hex($buffert));
 			switch($this->content_encoding){
 				//case 'compress': $bucket->data = $bucket->data; break;
 				case 'deflate': $buffert = gzinflate($buffert); break;
@@ -1799,7 +1801,7 @@ class htmlproxy_response_filter extends php_user_filter{
 				//case 'sdch': $bucket->data = $bucket->data; break;
 				default: debug_this("Got a response with content encoding {$this->content_encoding}.");
 			}
-			debug_this("Buffer after decompression: ".str2hex($buffert));
+			//debug_this("Buffer after decompression: ".str2hex($buffert));
 		}
 
 		if(false!==stripos($this->content_type,'html')){
