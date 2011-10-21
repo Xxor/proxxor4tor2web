@@ -908,8 +908,9 @@ function error_response($code,$msg){
 <span style=color:#fffffd>##</span><span style=color:#fefdf9>#</span><span style=color:#352667>#</span><span style=color:#42344d>#</span><span style=color:#0a050b>#</span><span style=color:#000404>#</span><span style=color:#fbfffc>#</span><span style=color:#fbfef5>#</span><span style=color:#fcfff6>#</span>
 </pre></center>'.
 			"<center><h1><span style='color:#8335a3'>O<span style=color:#68b12e>n</span>i<span style=color:#68b12e>o</span>n<span style=color:#68b12e>.</span>T<span style=color:#68b12e>o</span></span></span></h1></center>\n".
+
 			"<center><h3>".htmlspecialchars($msg)."</h3></center>\n".
-			"<hr><center>Powered by ".SOFTWARE." ".htmlspecialchars(VERSION)."</center>\n".
+			"<hr><center>Powered by ".htmlspecialchars(SOFTWARE)." ".htmlspecialchars(VERSION)."</center>\n".
 			"</body>\n".
 			"</html>\n";
 	
@@ -927,7 +928,7 @@ function redirect_to($url){
 			"<body bgcolor=white>\n".
 			'<meta HTTP-EQUIV="REFRESH" content="0; url='.htmlentities($url).'">';
 			'<a href="'.htmlentities($url)."\"\n".
-			"<hr><center>Powered by ".SOFTWARE." ".htmlspecialchars(VERSION)."</center>\n".
+			"<hr><center>Powered by ".htmlspecialchars(SOFTWARE)." ".htmlspecialchars(VERSION)."</center>\n".
 			"</body>\n".
 			"</html>\n";
 	
