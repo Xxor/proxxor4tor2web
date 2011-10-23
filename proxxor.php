@@ -1805,7 +1805,7 @@ class htmlproxy_response_filter extends php_user_filter{
 					continue; // Look for next tag
 				}
 				
-				$tagname = substr($buffert, $checkpoint+1, $offset-$checkpoint-1);
+				$tagname = strtolower(substr($buffert, $checkpoint+1, $offset-$checkpoint-1));
 				debug_this("Tagnamn:".$tagname);
 				
 				// Find html comments, <!--
@@ -1898,10 +1898,16 @@ class htmlproxy_response_filter extends php_user_filter{
 					
 					$value = substr($buffert, $checkpoint, $offset-$checkpoint);
 					
-					switch(strtolower($attribute)){
+					switch($attribute){
 						case 'style':
 							$value = htmlentities($this->parseCSS(@html_entity_decode($value, ENT_QUOTES)),ENT_QUOTES);
 							break;
+						case 'content':
+							// Meta refresh
+							if($tagname === 'meta' && preg_match('/\d+\s*;\s*url=([\'"`])?(.*?)\\1?/i', $value, $m)){
+								$value = str_replace($m[2], $this->proxifyURL($m[2]), $value);
+							}
+						break;
 						case 'href':
 						case 'code':
 						case 'codebase':
