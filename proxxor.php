@@ -888,29 +888,28 @@ function error_response($code,$msg){
 	accesslog_this($msg);
 	$code = preg_replace('/[^a-z0-9 ]/i','',$code);
 	$msg = 	"<html>\n".
-			"<head><title>$code</title></head>\n".
+			"<head><title>".htmlspecialchars($GLOBALS['DOMAINNAME'])." - $code</title>".
 			"<body bgcolor=white>\n".'<center>
-<pre style=font-size:6pt;letter-spacing:0;line-height:4pt;font-weight:bold;>
-<span style=color:#fff>####</span><span style=color:#fffffd>##</span><span style=color:#fff>#</span><span style=color:#fefffb>#</span><span style=color:#fffffb>#</span><span style=color:#fffffd>#</span>
-<span style=color:#fff>###</span><span style=color:#fffffd>##</span><span style=color:#fcfdff>#</span><span style=color:#c7e293>#</span><span style=color:#edfcd5>#</span><span style=color:#fefff4>#</span><span style=color:#fffffd>#</span>
-<span style=color:#fff>####</span><span style=color:#fdfff9>#</span><span style=color:#ddfba5>#</span><span style=color:#7ba01d>#</span><span style=color:#fcfeff>#</span><span style=color:#fffffd>##</span>
-<span style=color:#fff>###</span><span style=color:#fdfef9>#</span><span style=color:#fffdff>#</span><span style=color:#698636>#</span><span style=color:#fcfffa>#</span><span style=color:#fffffd>###</span>
-<span style=color:#fff>###</span><span style=color:#f8faf7>#</span><span style=color:#baaf99>#</span><span style=color:#94a756>#</span><span style=color:#fffffd>####</span>
-<span style=color:#fff>###</span><span style=color:#fffffa>#</span><span style=color:#fef9d1>#</span><span style=color:#fbe9f9>#</span><span style=color:#fffffd>####</span>
-<span style=color:#fffffd>##</span><span style=color:#f6f7f2>#</span><span style=color:#0c021d>#</span><span style=color:#f1f0c4>#</span><span style=color:#a89994>#</span><span style=color:#180734>#</span><span style=color:#fff>#</span><span style=color:#fffffd>##</span>
-<span style=color:#fffffd>#</span><span style=color:#fffcff>#</span><span style=color:#fffed7>#</span><span style=color:#f0efc1>#</span><span style=color:#efecc1>#</span><span style=color:#d2d1a1>#</span><span style=color:#a489b6>#</span><span style=color:#aa8db9>#</span><span style=color:#faf8fd>#</span><span style=color:#fffffd>#</span>
-<span style=color:#f9faf4>#</span><span style=color:#cdc8b5>#</span><span style=color:#fcfad1>#</span><span style=color:#fceed3>#</span><span style=color:#f1efc6>#</span><span style=color:#e1d9b5>#</span><span style=color:#351852>#</span><span style=color:#936ea1>#</span><span style=color:#9574ad>#</span><span style=color:#fefeff>#</span>
-<span style=color:#efeaf0>#</span><span style=color:#ededbb>#</span><span style=color:#f0ebcd>#</span><span style=color:#efefbd>#</span><span style=color:#e8e3bd>#</span><span style=color:#d9d5a5>#</span><span style=color:#b3afa3>#</span><span style=color:#7f5692>#</span><span style=color:#7c5493>#</span><span style=color:#2d265a>#</span>
-<span style=color:#070000>#</span><span style=color:#c6bdac>#</span><span style=color:#f6f5c9>#</span><span style=color:#f5f1cc>#</span><span style=color:#ebecc2>#</span><span style=color:#e2dda6>#</span><span style=color:#d7d1b1>#</span><span style=color:#70428b>#</span><span style=color:#663785>#</span><span style=color:#00060f>#</span>
-<span style=color:#170f24>#</span><span style=color:#bab59f>#</span><span style=color:#564b45>#</span><span style=color:#eeedc1>#</span><span style=color:#fffcdf>#</span><span style=color:#dfd8bb>#</span><span style=color:#beb69f>#</span><span style=color:#5c2d7e>#</span><span style=color:#59297d>#</span><span style=color:#0c0018>#</span>
-<span style=color:#fffffb>#</span><span style=color:#e8e7b1>#</span><span style=color:#f9f6d3>#</span><span style=color:#eeefc7>#</span><span style=color:#f3f2c2>#</span><span style=color:#a49e86>#</span><span style=color:#070a1b>#</span><span style=color:#4f1f75>#</span><span style=color:#522077>#</span><span style=color:#fffffb>#</span>
-<span style=color:#fffffd>#</span><span style=color:#a79fb6>#</span><span style=color:#f3eece>#</span><span style=color:#fdfdc9>#</span><span style=color:#fffedd>#</span><span style=color:#eae6c0>#</span><span style=color:#3b2266>#</span><span style=color:#521f7c>#</span><span style=color:#100820>#</span><span style=color:#fcfff6>#</span>
-<span style=color:#fffffd>##</span><span style=color:#fefdf9>#</span><span style=color:#352667>#</span><span style=color:#42344d>#</span><span style=color:#0a050b>#</span><span style=color:#000404>#</span><span style=color:#fbfffc>#</span><span style=color:#fbfef5>#</span><span style=color:#fcfff6>#</span>
-</pre></center>'.
+			<pre style=font-size:6pt;letter-spacing:0;line-height:4pt;font-weight:bold;>
+			<span style=color:#fff>####</span><span style=color:#fffffd>##</span><span style=color:#fff>#</span><span style=color:#fefffb>#</span><span style=color:#fffffb>#</span><span style=color:#fffffd>#</span>
+			<span style=color:#fff>###</span><span style=color:#fffffd>##</span><span style=color:#fcfdff>#</span><span style=color:#c7e293>#</span><span style=color:#edfcd5>#</span><span style=color:#fefff4>#</span><span style=color:#fffffd>#</span>
+			<span style=color:#fff>####</span><span style=color:#fdfff9>#</span><span style=color:#ddfba5>#</span><span style=color:#7ba01d>#</span><span style=color:#fcfeff>#</span><span style=color:#fffffd>##</span>
+			<span style=color:#fff>###</span><span style=color:#fdfef9>#</span><span style=color:#fffdff>#</span><span style=color:#698636>#</span><span style=color:#fcfffa>#</span><span style=color:#fffffd>###</span>
+			<span style=color:#fff>###</span><span style=color:#f8faf7>#</span><span style=color:#baaf99>#</span><span style=color:#94a756>#</span><span style=color:#fffffd>####</span>
+			<span style=color:#fff>###</span><span style=color:#fffffa>#</span><span style=color:#fef9d1>#</span><span style=color:#fbe9f9>#</span><span style=color:#fffffd>####</span>
+			<span style=color:#fffffd>##</span><span style=color:#f6f7f2>#</span><span style=color:#0c021d>#</span><span style=color:#f1f0c4>#</span><span style=color:#a89994>#</span><span style=color:#180734>#</span><span style=color:#fff>#</span><span style=color:#fffffd>##</span>
+			<span style=color:#fffffd>#</span><span style=color:#fffcff>#</span><span style=color:#fffed7>#</span><span style=color:#f0efc1>#</span><span style=color:#efecc1>#</span><span style=color:#d2d1a1>#</span><span style=color:#a489b6>#</span><span style=color:#aa8db9>#</span><span style=color:#faf8fd>#</span><span style=color:#fffffd>#</span>
+			<span style=color:#f9faf4>#</span><span style=color:#cdc8b5>#</span><span style=color:#fcfad1>#</span><span style=color:#fceed3>#</span><span style=color:#f1efc6>#</span><span style=color:#e1d9b5>#</span><span style=color:#351852>#</span><span style=color:#936ea1>#</span><span style=color:#9574ad>#</span><span style=color:#fefeff>#</span>
+			<span style=color:#efeaf0>#</span><span style=color:#ededbb>#</span><span style=color:#f0ebcd>#</span><span style=color:#efefbd>#</span><span style=color:#e8e3bd>#</span><span style=color:#d9d5a5>#</span><span style=color:#b3afa3>#</span><span style=color:#7f5692>#</span><span style=color:#7c5493>#</span><span style=color:#2d265a>#</span>
+			<span style=color:#070000>#</span><span style=color:#c6bdac>#</span><span style=color:#f6f5c9>#</span><span style=color:#f5f1cc>#</span><span style=color:#ebecc2>#</span><span style=color:#e2dda6>#</span><span style=color:#d7d1b1>#</span><span style=color:#70428b>#</span><span style=color:#663785>#</span><span style=color:#00060f>#</span>
+			<span style=color:#170f24>#</span><span style=color:#bab59f>#</span><span style=color:#564b45>#</span><span style=color:#eeedc1>#</span><span style=color:#fffcdf>#</span><span style=color:#dfd8bb>#</span><span style=color:#beb69f>#</span><span style=color:#5c2d7e>#</span><span style=color:#59297d>#</span><span style=color:#0c0018>#</span>
+			<span style=color:#fffffb>#</span><span style=color:#e8e7b1>#</span><span style=color:#f9f6d3>#</span><span style=color:#eeefc7>#</span><span style=color:#f3f2c2>#</span><span style=color:#a49e86>#</span><span style=color:#070a1b>#</span><span style=color:#4f1f75>#</span><span style=color:#522077>#</span><span style=color:#fffffb>#</span>
+			<span style=color:#fffffd>#</span><span style=color:#a79fb6>#</span><span style=color:#f3eece>#</span><span style=color:#fdfdc9>#</span><span style=color:#fffedd>#</span><span style=color:#eae6c0>#</span><span style=color:#3b2266>#</span><span style=color:#521f7c>#</span><span style=color:#100820>#</span><span style=color:#fcfff6>#</span>
+			<span style=color:#fffffd>##</span><span style=color:#fefdf9>#</span><span style=color:#352667>#</span><span style=color:#42344d>#</span><span style=color:#0a050b>#</span><span style=color:#000404>#</span><span style=color:#fbfffc>#</span><span style=color:#fbfef5>#</span><span style=color:#fcfff6>#</span>
+			</pre></center>'.
 			"<center><h1><span style='color:#8335a3'>O<span style=color:#68b12e>n</span>i<span style=color:#68b12e>o</span>n<span style=color:#68b12e>.</span>T<span style=color:#68b12e>o</span></span></span></h1></center>\n".
-
 			"<center><h3>".htmlspecialchars($msg)."</h3></center>\n".
-			"<hr><center>Powered by ".htmlspecialchars(SOFTWARE)." ".htmlspecialchars(VERSION)."</center>\n".
+			"<hr><center>Powered by ".htmlspecialchars(SOFTWARE." ".VERSION)."</center>\n".
 			"</body>\n".
 			"</html>\n";
 	
@@ -924,11 +923,11 @@ function error_response($code,$msg){
 
 function redirect_to($url){
 	$msg = 	"<html>\n".
-			"<head><title>Onion.To</title></head>\n".
+			"<head><title>".htmlspecialchars($GLOBALS['DOMAINNAME'])."</title></head>\n".
 			"<body bgcolor=white>\n".
 			'<meta HTTP-EQUIV="REFRESH" content="0; url='.htmlentities($url).'">';
 			'<a href="'.htmlentities($url)."\"\n".
-			"<hr><center>Powered by ".htmlspecialchars(SOFTWARE)." ".htmlspecialchars(VERSION)."</center>\n".
+			"<hr><center>Powered by ".htmlspecialchars(SOFTWARE." ".VERSION)."</center>\n".
 			"</body>\n".
 			"</html>\n";
 	
