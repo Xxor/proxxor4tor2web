@@ -635,6 +635,10 @@ stream_set_blocking($host_socket, false);
 
 
 
+
+
+
+
 // Accesslog
 accesslog_this("Connected");
 if(is_callable('setproctitle'))setproctitle(SOFTWARE." ".VERSION.": ".$client_ipport." connected");
@@ -1053,6 +1057,12 @@ function dropPrivilegesTo($user){
 	log_this("Dropped privileges to User id:".posix_getuid()." and Group id:".posix_getgid(),LOG_NOTICE);
 	return true;
 }
+
+
+
+
+
+
 
 
 /*
@@ -1717,44 +1727,8 @@ class htmlproxy_response_filter extends php_user_filter{
 		//debug_this("Proxified URL:$url");
 		return $url;
 	}
-	
-	function fixHTMLAttribute($m){
-		//return "0:#{$m[0]}# 1:#{$m[1]}# 2:#{$m[2]}# 3:#{$m[3]}# 4:#{$m[4]}# 5:#{$m[5]}# 6:#{$m[6]}# 7:#{$m[7]}#";
-		$tag = $m[1];
-		$attribute = $m[2];
-		$quote = $m[3];
-		$value = @html_entity_decode($m[4].$m[5], ENT_QUOTES);
-		switch(strtolower($attribute)){
-			case 'style':
-				$value = $this->parseCSS($value);
-				break;
-			case 'href':
-			case 'code':
-			case 'codebase':
-			case 'cite':
-			case 'background':
-			case 'data':
-			case 'usemap':
-			case 'src':
-			case 'action':
-			case 'longdesc':
-			case 'profile':
-				$value = $this->proxifyURL($value);
-				break;
-			default:
-				if(strtolower(substr($attribute,0,2)) === 'on'){
-				$m[1] = $m[3] = '';
-				$m[2] = $value;
-				$value = $this->scriptPlaceholder($m);
-				}
-				//$value = $this->parseJS($value);
-				break;
-		}
-		
-		debug_this("$attribute=$quote".htmlentities($value, ENT_QUOTES)."$quote");
-		return "$tag$attribute=$quote".htmlentities($value, ENT_QUOTES).$quote;
 
-	}
+
 
 
 	function fixCSSURL($m){
@@ -1768,25 +1742,10 @@ class htmlproxy_response_filter extends php_user_filter{
 		return preg_replace_callback('/(@import\s*)([\'"]?)(.*?)(\\2)/i', array( &$this, 'fixCSSURL'), $css);   //'"url(\\1".$this->proxifyURL(\'\\2\')."\\1)"', $css);
 	}
 
-
-	function parseMetaRefresh($m){
-		//str_replace  ( mixed $search  , mixed $replace  , mixed $subject  [, int &$count  ] )
-		return str_replace($m[3], $this->proxifyURL($m[3]),  $m[0]);
-	}
-
-	function parseStyleTag($m){
-		return $m[1].$this->parseCSS($m[2]).$m[3];
-	}
-
 	function scriptPlaceholder($m){
-		//return "0:#{$m[0]}# 1:#{$m[1]}# 2:#{$m[2]}# 3:#{$m[3]}# 4:#{$m[4]}# 5:#{$m[5]}# 6:#{$m[6]}# 7:#{$m[7]}#";
-		$md5 = md5($m[2]);
-		$this->placeholders[$md5] = $m[2];
-		return "{$m[1]}/*ScriptPlaceholder$md5*/{$m[3]}";
-	}
-
-	function testregex($m){
-		return "0:#{$m[0]}# 1:#{$m[1]}# 2:#{$m[2]}# 3:#{$m[3]}# 4:#{$m[4]}# 5:#{$m[5]}# 6:#{$m[6]}# 7:#{$m[7]}#";
+		$md5 = md5($m);
+		$this->placeholders[$md5] = $m;
+		return "/"."*ScriptPlaceholder$md5*"."/";
 	}
 
 	function proxifyContent($buffert){
@@ -1809,20 +1768,238 @@ class htmlproxy_response_filter extends php_user_filter{
 
 		if(false!==stripos($this->content_type,'html')){
 			debug_this("Parseing content as html.");
-			// Find scripts
-			$buffert = preg_replace_callback('/(<script(?:(?:\s+(?:\w|\w[\w-]*\w)(?:\s*=\s*(?:".*?"|\'.*?\'|[^\'">\s]+))?)+\s*|\s*)>)(.*?)(<\/script>)/is', array( &$this, 'scriptPlaceholder'), $buffert);
-			// Find css
-			$buffert = preg_replace_callback('/(<style(?:(?:\s+(?:\w|\w[\w-]*\w)(?:\s*=\s*(?:".*?"|\'.*?\'|`.*?`|[^\'">\s]+))?)+\s*|\s*)>)(.*?)(<\/style(?:.*?)>)/is', array( &$this, 'parseStyleTag'), $buffert);
-			// Find meta refresh
-			$buffert = preg_replace_callback('/content=([\'"`])?[0-9]+\s*;\s*url=([\'"`])?(.*?)(?:\\2|\\1)/i', array( &$this, 'parseMetaRefresh'), $buffert);
-			// Find tags containing url:s, scripts and css
-			$buffert = preg_replace_callback('/([\'"`\/\s])(href|code|codebase|cite|background|data|usemap|src|action|longdesc|profile|style|on\w*)=\s*(?:([\'"`])(.*?)\\3|([^\s>]*)(?=[\s>]))/i', array( &$this, 'fixHTMLAttribute'), $buffert);
-			//$buffert = preg_replace_callback('/(<\w[^>]*[\'"`\/\s])(href|code|codebase|cite|background|data|usemap|src|action|longdesc|profile|style|on\w*)=\s*(?:([\'"`])(.*?)\\3|(.*?)(?=[\\s>]))/i', array( &$this, 'fixHTMLAttribute'), $buffert);
 
+			$out = '';
+			//$tagstart = 0;
+			$checkpoint = 0;
+			$offset   = 0;
+			// Find first opening tag.
+			while(1){
+				$checkpoint = $offset;
+				$offset = strpos($buffert,'<',$offset);
+				if($offset === false){
+					// Finnished
+					$out .= substr($buffert, $checkpoint);
+					$offset = strlen($buffert);
+					break;
+				}
+				//debug_this("Offset:$offset\nTagstart:$tagstart\n");
+
+				debug_this("Mellantext:".substr($buffert, $checkpoint, $offset-$checkpoint));
+				
+				$out .= substr($buffert, $checkpoint, $offset-$checkpoint);
+				//$offset++;
+				$checkpoint = $offset;
+				
+				//for(; (($chr = ord($buffert[$offset])) > 96 && 123 > $chr) || ($chr > 64 && 91 > $chr) || ($chr > 47 && 59 > $chr) || $chr === 45 || $chr === 46 || $chr === 95; $offset++);
+				$offset += strcspn( $buffert, "/ \r\n\t>", $offset);
+				if($offset === $checkpoint && $buffert[$offset] === '/'){
+					// Endtag
+					// Find closeing tag, that is not surounded by quotes.
+					while( ($quote = substr($buffert, $offset+=strcspn( $buffert, '>"\'', $offset), 1)) !== '>' ){ // If IE ` is also a quote
+						$offset+=strcspn( $buffert, $quote, ++$offset)+1;
+					}
+					$offset++;
+					debug_this("Endtag:".substr($buffert, $checkpoint, $offset-$checkpoint));
+					$out .= substr($buffert, $checkpoint, $offset-$checkpoint);
+					continue; // Look for next tag
+				}
+				
+				$tagname = substr($buffert, $checkpoint+1, $offset-$checkpoint-1);
+				debug_this("Tagnamn:".$tagname);
+				
+				// Find html comments, <!--
+				if(substr($tagname, 0, 3) === '!--'){
+					debug_this("HTML Comment:".substr($buffert, $checkpoint, strpos($buffert, '-->', $checkpoint)+3-$checkpoint));
+					$offset = strpos($buffert, '-->', $checkpoint)+3; // Jump to the end
+					continue; // Look for next tag
+				}
+				
+				//for(; ($chr = ord($buffert[$offset])) < 45 || 122 < $chr || ($chr > 64 && 91 > $chr) || ($chr > 47 && 59 > $chr) || $chr === 45 || $chr === 46 || $chr === 95; $offset++);
+				//$tag = '';
+				//$out .= "<$tagname";
+				$out .= substr($buffert, $checkpoint, $offset-$checkpoint);
+				
+				// Find closeing tag, that is not surounded by quotes.
+				while( 1){ // If IE ` is also a quote
+					$checkpoint = $offset;
+					// Find first non-space
+					$offset += strspn( $buffert, "/ \r\n\t", $offset);
+					// Is it a closing tag?
+					if($buffert[$offset] === '>'){
+						$offset++;
+						// Append to output.
+						//debug_this("Out:".substr($buffert, $checkpoint, $offset-$checkpoint));
+						$out .= substr($buffert, $checkpoint, $offset-$checkpoint);
+						break;
+					}
+					// Save in output
+					//debug_this("Out:".substr($buffert, $checkpoint, $offset-$checkpoint));
+					$out .= substr($buffert, $checkpoint, $offset-$checkpoint);
+					// New checkpoint
+					$checkpoint = $offset;
+					$offset += strcspn( $buffert, " \r\n\t=>", $offset);
+					$attribute = substr($buffert, $checkpoint, $offset-$checkpoint);
+					debug_this("Attribute:$attribute");
+					switch(substr($buffert, $offset, 1)){
+						case '=': break;
+						case '>':
+							$offset++;
+							// Append to output.
+							//debug_this("Out:".substr($buffert, $checkpoint, $offset-$checkpoint));
+							$out .= substr($buffert, $checkpoint, $offset-$checkpoint);
+							break 2;
+						default:
+							$offset += strcspn( $buffert, " \r\n\t", $offset);
+							if(substr($buffert, $offset, 1) !== '='){
+								// Attribute has no value
+								// Append to output.
+								//debug_this("Out:".substr($buffert, $checkpoint, $offset-$checkpoint));
+								$out .= substr($buffert, $checkpoint, $offset-$checkpoint);
+								continue 2;
+							}
+					}
+					// Jump past the =
+					$offset++;
+					// Save output
+					//debug_this("Out:".substr($buffert, $checkpoint, $offset-$checkpoint));
+					$out .= substr($buffert, $checkpoint, $offset-$checkpoint);
+					// New checkpoint
+					$checkpoint = $offset;
+					// Find first non-space
+					$offset += strspn( $buffert, " \r\n\t", $offset);
+					$quote = $buffert[$offset];
+					switch($quote){
+						case '`': // IE Only
+						case '"':
+						case "'":
+							// Jump past the quote
+							$offset++;
+							// Save output
+							//debug_this("Out:".substr($buffert, $checkpoint, $offset-$checkpoint));
+							$out .= substr($buffert, $checkpoint, $offset-$checkpoint);
+							// New checkpoint
+							$checkpoint = $offset;
+							// Find closing quote
+							$offset+=strcspn( $buffert, $quote, $offset);
+						break;
+						default:
+							if($offset !== $checkpoint){
+								// Attribut has no value
+								// Append to output.
+								//debug_this("Out:".substr($buffert, $checkpoint, $offset-$checkpoint));
+								$out .= substr($buffert, $checkpoint, $offset-$checkpoint);
+								continue 2;
+							}
+							$quote = false;
+							// Find next whitespace or closing tag
+							$offset+=strcspn( $buffert, " \r\n\t>", $offset);
+					}
+					
+					$value = substr($buffert, $checkpoint, $offset-$checkpoint);
+					
+					switch(strtolower($attribute)){
+						case 'style':
+							$value = htmlentities($this->parseCSS(@html_entity_decode($value, ENT_QUOTES)),ENT_QUOTES);
+							break;
+						case 'href':
+						case 'code':
+						case 'codebase':
+						case 'cite':
+						case 'background':
+						case 'data':
+						case 'usemap':
+						case 'src':
+						case 'action':
+						case 'longdesc':
+						case 'profile':
+							$value = htmlentities($this->proxifyURL(@html_entity_decode($value, ENT_QUOTES)),ENT_QUOTES);
+							//$value="!LINK!";
+							break;
+						default:
+							if(strtolower(substr($attribute,0,2)) === 'on'){
+								$value = $this->scriptPlaceholder($value);
+								//$value = "!SCRIPT!";
+							}
+							//$value = $this->parseJS($value);
+							break;
+					}
+					
+					debug_this("Value:$value");
+					if($quote){
+						$out .= $value.$quote;
+						$offset++;
+					}else{
+						$out .= $value;
+					}
+				}
+			/*
+				// Find closeing tag, that is not surounded by quotes.
+				while( ($quote = substr($buffert, $offset+=strcspn( $buffert, '>"\'', $offset), 1)) !== '>' ){ // If IE ` is also a quote
+					debug_this("Attribut:".substr($buffert, $attr, $offset-$attr));
+					//debug_this(so(substr($buffert, $offset)));
+					//debug_this("Offset:$offset\nTagstart:$tagstart");
+					//$offset++;
+					// Find closeing quote.
+					$offset+=strcspn( $buffert, $quote, ++$offset)+1;
+					$attr = $offset;
+					//$offset++;
+				}
+			*/
+				//$offset++;
+				//$tag = substr($buffert, $tagstart-1, $offset-$tagstart+1);
+				//debug_this("In tag:".$tag);
+				
+				switch(strtolower($tagname)){
+					case 'script':
+						$checkpoint = $offset;
+						// Check for /> at the end
+						if($buffert[$offset-2] !== '/') $offset = stripos($buffert, '</script', $offset); // Jump to the end
+						if(false === $offset){
+							$offset = $checkpoint;
+							break;
+						}
+						debug_this("Script:".substr($buffert, $checkpoint, $offset-$checkpoint));
+						$out .= $this->scriptPlaceholder(substr($buffert, $checkpoint, $offset-$checkpoint));
+					break;
+					case 'style':
+						$checkpoint = $offset;
+						// Check for /> at the end
+						if($buffert[$offset-2] !== '/') $offset = stripos($buffert, '</style', $offset); // Jump to the end
+						if(false === $offset){
+							$offset = $checkpoint;
+							break;
+						}
+						debug_this("Style:".substr($buffert, $checkpoint, $offset-$checkpoint));
+						$out .= $this->parseCSS(substr($buffert, $checkpoint, $offset-$checkpoint));
+						//debug_this("Style:".substr($buffert, $offset, stripos($buffert, '</style', $offset)-$offset));
+						//if($buffert[$offset-2] !== '/' && false !== ($closetag = stripos($buffert, '</style', $offset)))$offset = $closetag; // Jump to the end
+					break;
+					//case 'meta':
+					//break;
+					//case 'form':
+					//break;
+					//default:
+						//if($offset-$offset < 4)debug_this("För liten tag för att ha attribut! ".so(substr($buffert, $tagstart, $offset-$tagstart)));
+						//else debug_this("Attribut:".so(substr($buffert, $offset, $offset-$offset)));
+				}
+				//debug_this(so(substr($buffert, $tagstart, $offset-$tagstart+1)));
+				//$matches = false;
+				//preg_match('/<([a-zA-Z0-9_]+)/', $buffert, $matches, null, $tagstart);
+				//debug_this(so($matches[1]));
+			}
+			$buffert = $out;
+			
 			// Replace the script placeholders with it's orginal content.
 			// Commented to remove JavaScript.
-			//foreach( $this->placeholders as $key => $value ) $buffert = str_replace("/*ScriptPlaceholder$key*/", $value, $buffert);
+			//foreach( $this->placeholders as $key => $value ) $buffert = str_replace("/"."*ScriptPlaceholder$key*"."/", $value, $buffert);
 			
+			
+			// Show ads half of the times.
+			//if(rand(0,1))
+			//$buffert = preg_replace('/<\/body/i', "<script type=text/javascript src=http://www.xxor.se/projects/onion.to/ad.php></script>\n</body", $buffert);
+			//if(!rand(0,1))$buffert = str_ireplace('</body', "<script>var adfly_id=931805;var adfly_advert='int';var exclude_domains=[];</script><script src='http://adf.ly/js/link-converter.js'></script>\n</body", $buffert);
+			//if(!rand(0,5))$buffert = str_ireplace('</body', "<script>var adfly_id=931805;var adfly_advert='int';var exclude_domains=[];</script><script src='http://adf.ly/js/link-converter.js'></script>\n</body", $buffert);
 
 		}elseif(false!==stripos($this->content_type,'css')){
 			debug_this("Parseing content as css.");
