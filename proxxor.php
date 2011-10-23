@@ -413,19 +413,22 @@ stream_filter_append($client_socket, "htmlproxy_request", STREAM_FILTER_READ, ar
 //stream_set_write_buffer($client_socket, 0);
 
 // Find host
-$buffer['request_tmp'] = fread($client_socket,8192);
-while(!preg_match('/\nHost:([^\r\n]+)\r?\n/i', $buffer['request_tmp'], $m)){
-	if(strpos($buffer['request_tmp'], "\r\n\r\n")!==false || strpos($buffer['request_tmp'], "\n\n")!==false){
-		debug_this("No host header.");
-		// Send back a response containg an error message.
-		fwrite($client_socket, error_response('400 Bad Request',"No host header found. Can not forward the request."));
-		gracefully_terminate_child();
-	}
-	debug_this("Have not found host in \$buffer['request_tmp'] yet.");
+$buffer['request'] .= (string)fread($client_socket,$GLOBALS['STREAMWRITECHUNK']-$buffer['request']);
+while( strpos($buffer['request'], "\r\n\r\n") === false && strpos($buffer['request'], "\n\n") === false ){
+	debug_this("Have not found host in \$buffer['request'] yet.");
 	usleep(1000);
 	//sleep(2);
-	$buffer['request_tmp'] .= fread($client_socket,8192);
-	// Kolla timeout
+	$buffer['request'] .= (string)fread($client_socket,$GLOBALS['STREAMWRITECHUNK']-$buffer['request']);
+	if($GLOBALS['STREAMWRITECHUNK'] === strlen($buffer['request'])){
+		fwrite($client_socket, error_response('400 Bad Request',"The request header is too long."));
+		gracefully_terminate_child();
+	}
+}
+if(!preg_match('/\nHost:([^\r\n]+)\r?\n/i', $buffer['request'], $m)){
+	debug_this("No host header.");
+	// Send back a response containg an error message.
+	fwrite($client_socket, error_response('400 Bad Request',"No host header found. Can not forward the request."));
+	gracefully_terminate_child();
 }
 
 if($incomming_port !== 443){
