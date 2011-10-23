@@ -84,7 +84,8 @@ $GLOBALS = array(
 	'SOCKS5IP'              => '127.0.0.1',
 	'SOCKS5PORT'            => 1080,
 	'SOCKS5OPTIMISTICDATA'  => false,
-	'DEBUGMODE'             => false
+	'DEBUGMODE'             => false,
+	'ALLOWSCRIPT'           => true
 );
 
 if(file_exists($conf_file) && is_readable($conf_file)){
@@ -1904,10 +1905,12 @@ class htmlproxy_response_filter extends php_user_filter{
 							break;
 						case 'content':
 							// Meta refresh
-							if($tagname === 'meta' && preg_match('/\d+\s*;\s*url=([\'"`])?(.*?)\\1?/i', $value, $m)){
-								$value = str_replace($m[2], $this->proxifyURL($m[2]), $value);
+							if($tagname === 'meta' && preg_match('/\d+\s*;\s*url=([\'"`])?(.*?)\\1?/i', @html_entity_decode($value, ENT_QUOTES), $m)){
+								$value = htmlentities(str_replace($m[2], $this->proxifyURL($m[2]), @html_entity_decode($value, ENT_QUOTES)),ENT_QUOTES);
 							}
 						break;
+						case 'src':
+							if(!$GLOBALS['ALLOWSCRIPT'] && $tagname === 'script')$value = '';
 						case 'href':
 						case 'code':
 						case 'codebase':
@@ -1915,7 +1918,6 @@ class htmlproxy_response_filter extends php_user_filter{
 						case 'background':
 						case 'data':
 						case 'usemap':
-						case 'src':
 						case 'action':
 						case 'longdesc':
 						case 'profile':
@@ -1924,7 +1926,7 @@ class htmlproxy_response_filter extends php_user_filter{
 							break;
 						default:
 							if(strtolower(substr($attribute,0,2)) === 'on'){
-								$value = $this->scriptPlaceholder($value);
+								$value = $GLOBALS['ALLOWSCRIPT']?$this->scriptPlaceholder($value):'';
 								//$value = "!SCRIPT!";
 							}
 							//$value = $this->parseJS($value);
@@ -1966,7 +1968,7 @@ class htmlproxy_response_filter extends php_user_filter{
 							break;
 						}
 						debug_this("Script:".substr($buffert, $checkpoint, $offset-$checkpoint));
-						$out .= $this->scriptPlaceholder(substr($buffert, $checkpoint, $offset-$checkpoint));
+						if($GLOBALS['ALLOWSCRIPT']) $out .= $this->scriptPlaceholder(substr($buffert, $checkpoint, $offset-$checkpoint));
 					break;
 					case 'style':
 						$checkpoint = $offset;
