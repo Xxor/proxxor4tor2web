@@ -729,7 +729,7 @@ function gracefully_terminate_child(){
 	//debug_this("Host sent ".@ftell($host_socket)." bytes. Cient sent ".@ftell($client_socket).' bytes.');
 	if(is_resource($client_socket) && is_resource($host_socket) && get_resource_type($client_socket)==='stream' && get_resource_type($host_socket)==='stream'){
 		stream_set_blocking($client_socket, false);
-		stream_set_blocking($client_socket, false);
+		stream_set_blocking($host_socket, false);
 		
 		// Timelimit.
 		$i = 0;
@@ -775,10 +775,14 @@ function gracefully_terminate_child(){
 		stream_socket_shutdown($host_socket,STREAM_SHUT_RD); // Disable further receptions.
 		stream_socket_shutdown($client_socket, STREAM_SHUT_WR); // Disable further transmissions.
 	}elseif($host_socket && is_resource($host_socket)){
+		stream_set_blocking($host_socket, false);
+		fwrite($host_socket, $buffer['request']); // Empty buffer.
 		//stream_socket_shutdown($host_socket,STREAM_SHUT_RDWR);
 		@fclose($host_socket);
 	}
-	if(is_resource($client_socket)){
+	if($client_socket && is_resource($client_socket)){
+		stream_set_blocking($client_socket, false);
+		fwrite($client_socket, $buffer['response']);
 		//stream_socket_shutdown($client_socket, STREAM_SHUT_RDWR);
 		@fclose($client_socket);
 	}
@@ -793,7 +797,7 @@ function forcefully_terminate_child(){
 	//debug_this("Host sent ".@ftell($host_socket)." bytes. Cient sent ".@ftell($client_socket).' bytes.');
 	if(is_resource($client_socket) && is_resource($host_socket) && get_resource_type($client_socket)==='stream' && get_resource_type($host_socket)==='stream'){
 		stream_set_blocking($client_socket, false);
-		stream_set_blocking($client_socket, false);
+		stream_set_blocking($host_socket, false);
 		
 		fwrite($host_socket, $buffer['request']); // Empty buffer.
 		stream_socket_shutdown($client_socket,STREAM_SHUT_RD); // Disable further receptions.
@@ -802,11 +806,15 @@ function forcefully_terminate_child(){
 		fwrite($client_socket, $buffer['response']);
 		stream_socket_shutdown($host_socket,STREAM_SHUT_RD); // Disable further receptions.
 		stream_socket_shutdown($client_socket, STREAM_SHUT_WR); // Disable further transmissions.
-	}elseif(is_resource($host_socket)){
+	}elseif($host_socket && is_resource($host_socket)){
+		stream_set_blocking($host_socket, false);
+		fwrite($host_socket, $buffer['request']); // Empty buffer.
 		//stream_socket_shutdown($host_socket,STREAM_SHUT_RDWR);
 		@fclose($host_socket);
 	}
-	if(is_resource($client_socket)){
+	if($client_socket && is_resource($client_socket)){
+		stream_set_blocking($client_socket, false);
+		fwrite($client_socket, $buffer['response']);
 		//stream_socket_shutdown($client_socket, STREAM_SHUT_RDWR);
 		@fclose($client_socket);
 	}
