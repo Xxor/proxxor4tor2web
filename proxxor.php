@@ -476,7 +476,7 @@ if(!preg_match('/(^|\.)([A-z234567]{16})$/',$host_name,$m)){ // Onion
 									'c22a4915ee32837c2ea23baa0d13dd28',
 									'ec4a616918520ab0b8ef4431269e979d',
 									'4d7c82d9cab0fe2c85cf30e12518ec48',
-									'35d7dea6c8c58cc286fdb0e8bb3cbcba',
+									//'35d7dea6c8c58cc286fdb0e8bb3cbcba',
 									'27c58ae958152d4c9a4096fe6e3c981f',
 									'2bbeb602d75369444a42ab8c6128b7da',
 									'ad88d74b68a90fdbd46be85a0',// What is this?
@@ -490,7 +490,8 @@ if(!preg_match('/(^|\.)([A-z234567]{16})$/',$host_name,$m)){ // Onion
 						)
 		)
 	){
-		fwrite($client_socket,redirect_to('http://disney.com')); // Go to disney.com
+		//fwrite($client_socket,redirect_to('http://disney.com')); // Go to disney.com
+		$buffer['response'] =  error_response('400 Bad Request',"Blocked by domain blocklist.");
 		accesslog_this("Blocked by domain blocklist");
 		gracefully_terminate_child();
 	}
