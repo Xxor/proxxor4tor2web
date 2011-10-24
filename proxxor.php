@@ -551,7 +551,7 @@ if($bytes !== fwrite($host_socket,$buf)){
 // Optimistic data
 if($GLOBALS['SOCKS5OPTIMISTICDATA']){
 	// Send all data we can.
-	$buffer['request_tmp'] = substr($buffer['request_tmp'], (int)fwrite($host_socket,$buffer['request_tmp']));
+	$buffer['request'] = substr($buffer['request'], (int)fwrite($host_socket,$buffer['request']));
 }
 
 $buf = fread($host_socket,4);
@@ -662,36 +662,14 @@ while(!feof($host_socket) && !feof($client_socket)){
 	  `"bmmmd'  .JMML  JMML..JMML..JMML.`Wbmd"MML.    .JMML.`Ybmd9'   `Ybmd9'  MMbmmd'
 	                                                                           MM
 	                                                                         .JMM*/
-	// Read incomming data into a buffer.
-	if($GLOBALS['STREAMWRITECHUNK'] > strlen($buffer['request_tmp'])) $buffer['request'] = $buffer['request_tmp'].fread($client_socket,$GLOBALS['STREAMWRITECHUNK']-strlen($buffer['request_tmp']));
-	// Write data.
-	if(false===($buffer['request_tmp'] = @fwrite($host_socket, $buffer['request']))){
-		//Error
-		debug_this("Error while tranmiting request");
-		if($error = socket_last_error())log_this('Sending to host caused an Error on line '.__LINE__.': '.socket_strerror($error),LOG_ERR);
-		while ($error = openssl_error_string())log_this('Sending to host caused an SSL Error on line '.__LINE__.': '.$error,LOG_ERR);
-		// Ressetting, try again.
-		$buffer['request_tmp'] = 0;
-	}
-	if($buffer['request_tmp'])debug_this($buffer['request_tmp']." bytes of request transmited.");
-	// Remove written data from the buffer.
-	$buffer['request_tmp'] = substr($buffer['request'], $buffer['request_tmp']);
-	
-	// Read incomming data into a buffer.
-	if($GLOBALS['STREAMWRITECHUNK'] > strlen($buffer['response_tmp'])) $buffer['response'] = $buffer['response_tmp'].fread($host_socket,$GLOBALS['STREAMWRITECHUNK']-strlen($buffer['response_tmp']));
-	// Write data.
-	if(false===($buffer['response_tmp'] = @fwrite($client_socket, $buffer['response']))){
-		//Error
-		debug_this("Error while tranmiting response");
-		if($error = socket_last_error())log_this('Sending to client caused an Error on line '.__LINE__.': '.socket_strerror($error),LOG_ERR);
-		while ($error = openssl_error_string())log_this('Sending to client caused an SSL Error on line '.__LINE__.': '.$error,LOG_ERR);
-		// Ressetting, try again.
-		$buffer['response_tmp'] = 0;
-	}
-	if($buffer['response_tmp'])debug_this($buffer['response_tmp']." bytes of response transmited.");
-	// Remove written data from the buffer.
-	$buffer['response_tmp'] = substr($buffer['response'], $buffer['response_tmp']);
-	
+	// Read incomming request data into an internal buffer.
+	$buffer['request'] .= (string)fread($client_socket,$GLOBALS['STREAMWRITECHUNK']-$buffer['request']);
+	// Forward request data to the host.
+	$buffer['request'] = substr($buffer['request'], (int)fwrite($host_socket,$buffer['request']));
+	// Read incomming response data into an internal buffer.
+	$buffer['response'] .= (string)fread($host_socket,$GLOBALS['STREAMWRITECHUNK']-$buffer['response']);
+	// Forward response data to the client.
+	$buffer['response'] = substr($buffer['response'], (int)fwrite($client_socket,$buffer['response']));
 	// Do not eat CPU.
 	usleep(1000);
 }
@@ -750,8 +728,6 @@ function gracefully_terminate_child(){
 	debug_this('Gracefully terminateing thread.');
 	//debug_this("Host sent ".@ftell($host_socket)." bytes. Cient sent ".@ftell($client_socket).' bytes.');
 	if(is_resource($client_socket) && is_resource($host_socket) && get_resource_type($client_socket)==='stream' && get_resource_type($host_socket)==='stream'){
-		if(!is_string($buffer['request_tmp']))$buffer['request_tmp'] = substr($buffer['request'], (int)$buffer['request_tmp']);
-		if(!is_string($buffer['response_tmp']))$buffer['response_tmp'] = substr($buffer['response'], (int)$buffer['response_tmp']);
 		stream_set_blocking($client_socket, false);
 		stream_set_blocking($client_socket, false);
 		
@@ -760,12 +736,10 @@ function gracefully_terminate_child(){
 		$bytes = ftell($client_socket);
 		
 		while(!feof($client_socket)){
-			// Read incomming data into a buffer.
-			if($GLOBALS['STREAMWRITECHUNK'] > strlen($buffer['request_tmp'])) $buffer['request'] = $buffer['request_tmp'].fread($client_socket,$GLOBALS['STREAMWRITECHUNK']-strlen($buffer['request_tmp']));
-			// Break out of loop if no data or if unable to write data
-			if(!($buffer['request_tmp'] = @fwrite($host_socket, $buffer['request'])))break;
-			// Remove written data from the buffer.
-			$buffer['request_tmp'] = substr($buffer['request'], $buffer['request_tmp']);
+			// Read incomming request data into an internal buffer.
+			$buffer['request'] .= (string)fread($client_socket,$GLOBALS['STREAMWRITECHUNK']-$buffer['request']);
+			// Forward request data to the host.
+			$buffer['request'] = substr($buffer['request'], (int)fwrite($host_socket,$buffer['request']));
 			if($i++>1000){
 				if($bytes === ftell($client_socket)) break;
 				$i = 0;
@@ -778,19 +752,17 @@ function gracefully_terminate_child(){
 		stream_socket_shutdown($client_socket,STREAM_SHUT_RD); // Disable further receptions.
 		stream_socket_shutdown($host_socket, STREAM_SHUT_WR); // Disable further transmissions.
 		
-		if(ftell($host_socket)===0)$buffer['response_tmp'] .= error_response('504 Gateway Timeout',"Proxy timed out after not recieving any data from the upstream server.");
+		if(ftell($host_socket)===0)$buffer['response'] .= error_response('504 Gateway Timeout',"Proxy timed out after not recieving any data from the upstream server.");
 		
 		// Timelimit.
 		$i = 0;
 		$bytes = ftell($host_socket);
 		
 		while(!feof($host_socket)){
-			// Read incomming data into a buffer.
-			if($GLOBALS['STREAMWRITECHUNK'] > strlen($buffer['response_tmp'])) $buffer['response'] = $buffer['response_tmp'].fread($host_socket,$GLOBALS['STREAMWRITECHUNK']-strlen($buffer['response_tmp']));
-			// Break out of loop if no data or if unable to write data
-			if(!($buffer['response_tmp'] = @fwrite($client_socket, $buffer['response'])))break;
-			// Remove written data from the buffer.
-			$buffer['response_tmp'] = substr($buffer['response'], $buffer['response_tmp']);
+			// Read incomming response data into an internal buffer.
+			$buffer['response'] .= (string)fread($host_socket,$GLOBALS['STREAMWRITECHUNK']-$buffer['response']);
+			// Forward response data to the client.
+			$buffer['response'] = substr($buffer['response'], (int)fwrite($client_socket,$buffer['response']));
 			if($i++>1000){
 				if($bytes === ftell($host_socket)) break;
 				$i = 0;
@@ -820,17 +792,14 @@ function forcefully_terminate_child(){
 	log_this('Forcefully terminateing thread.',LOG_NOTICE);
 	//debug_this("Host sent ".@ftell($host_socket)." bytes. Cient sent ".@ftell($client_socket).' bytes.');
 	if(is_resource($client_socket) && is_resource($host_socket) && get_resource_type($client_socket)==='stream' && get_resource_type($host_socket)==='stream'){
-		// $buffer['request_tmp'] and $buffer['response_tmp'] might be an int or a boolean, in which case me must extract it from $buffer['request'] or $buffer['response'].
-		if(!is_string($buffer['request_tmp']))$buffer['request_tmp'] = substr($buffer['request'], (int)$buffer['request_tmp']);
-		if(!is_string($buffer['response_tmp']))$buffer['response_tmp'] = substr($buffer['response'], (int)$buffer['response_tmp']);
 		stream_set_blocking($client_socket, false);
 		stream_set_blocking($client_socket, false);
 		
 		fwrite($host_socket, $buffer['request']); // Empty buffer.
 		stream_socket_shutdown($client_socket,STREAM_SHUT_RD); // Disable further receptions.
 		stream_socket_shutdown($host_socket, STREAM_SHUT_WR); // Disable further transmissions.
-		if(ftell($host_socket)===0)$buffer['response_tmp'] .= error_response('504 Gateway Timeout',"Proxy timed out after not recieving any data from the upstream server.");
-		fwrite($client_socket, $buffer['response_tmp']);
+		if(ftell($host_socket)===0)$buffer['response'] .= error_response('504 Gateway Timeout',"Proxy timed out after not recieving any data from the upstream server.");
+		fwrite($client_socket, $buffer['response']);
 		stream_socket_shutdown($host_socket,STREAM_SHUT_RD); // Disable further receptions.
 		stream_socket_shutdown($client_socket, STREAM_SHUT_WR); // Disable further transmissions.
 	}elseif(is_resource($host_socket)){
