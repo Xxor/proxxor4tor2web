@@ -421,14 +421,14 @@ while( strpos($buffer['request'], "\r\n\r\n") === false && strpos($buffer['reque
 	//sleep(2);
 	$buffer['request'] .= (string)fread($client_socket,$GLOBALS['STREAMWRITECHUNK']-$buffer['request']);
 	if($GLOBALS['STREAMWRITECHUNK'] === strlen($buffer['request'])){
-		fwrite($client_socket, error_response('400 Bad Request',"The request header is too long."));
+		$buffer['response'] =  error_response('400 Bad Request',"The request header is too long.");
 		gracefully_terminate_child();
 	}
 }
 if(!preg_match('/\nHost:([^\r\n]+)\r?\n/i', $buffer['request'], $m)){
 	debug_this("No host header.");
 	// Send back a response containg an error message.
-	fwrite($client_socket, error_response('400 Bad Request',"No host header found. Can not forward the request."));
+	$buffer['response'] =  error_response('400 Bad Request',"No host header found. Can not forward the request.");
 	gracefully_terminate_child();
 }
 
@@ -444,7 +444,7 @@ $host_name = preg_replace('/[^a-z0-9-\.]/i','',$m[1]); // Clean hostname.  Shoul
 $host_name = str_replace(".".strtolower($GLOBALS['DOMAINNAME']), '', trim(strtolower($host_name))); // Fix hostname
 // Search for hostname in loop blocklist
 if(in_array($host_name, $loop_blocklist)){
-		fwrite($client_socket,redirect_to('http://www.'.$GLOBALS['DOMAINNAME']));
+		$buffer['response'] = redirect_to('http://www.'.$GLOBALS['DOMAINNAME']);
 		gracefully_terminate_child();
 }
 
@@ -502,7 +502,7 @@ if(!preg_match('/(^|\.)([A-z234567]{16})$/',$host_name,$m)){ // Onion
 debug_this("Connecting to socks5 proxy ".$GLOBALS['SOCKS5IP'].":".$GLOBALS['SOCKS5PORT']."...");
 if(!$host_socket = stream_socket_client("tcp://".$GLOBALS['SOCKS5IP'].":".$GLOBALS['SOCKS5PORT'], $errno, $errstr, 30,STREAM_CLIENT_CONNECT, $host_socket)){
 	log_this("Failed to connect to socks5 proxy ".$GLOBALS['SOCKS5IP'].":".$GLOBALS['SOCKS5PORT'], LOG_CRIT);
-	fwrite($client_socket, error_response('500 Internal Server Error',"Failed to connect to socks5 proxy ".$GLOBALS['SOCKS5IP'].":".$GLOBALS['SOCKS5PORT']));
+	$buffer['response'] =  error_response('500 Internal Server Error',"Failed to connect to socks5 proxy ".$GLOBALS['SOCKS5IP'].":".$GLOBALS['SOCKS5PORT']);
 	gracefully_terminate_child();
 }
 stream_set_write_buffer($host_socket,$GLOBALS['STREAMRWBUFFER']); // Set the streams writebuffer.
@@ -512,7 +512,7 @@ debug_this("Connected to socks5 proxy ".$GLOBALS['SOCKS5IP'].":".$GLOBALS['SOCKS
 debug_this("Negotiationg method with socks5 proxy.");
 if(3 !== fwrite($host_socket,"\x05\x01\x00")){
 	log_this("Error 1 in communication with upstream proxy.", LOG_CRIT);
-	fwrite($client_socket, error_response('502 Bad Gateway',"Error 1 in communication with upstream proxy. 1"));
+	$buffer['response'] =  error_response('502 Bad Gateway',"Error 1 in communication with upstream proxy. 1");
 	gracefully_terminate_child();
 }
 
@@ -526,14 +526,14 @@ while(strlen($buf) < 2){
 if(ord($buf[0]) !== 5 || ord($buf[1]) !== 0 ){
 	debug_this("Socks5 proxy returned error.");
 	log_this("Error 2 in communication with upstream proxy.", LOG_CRIT);
-	fwrite($client_socket, error_response('502 Bad Gateway',"Error 2 in communication with upstream proxy."));
+	$buffer['response'] =  error_response('502 Bad Gateway',"Error 2 in communication with upstream proxy.");
 	gracefully_terminate_child();
 }
 
 if(strlen($host_name) > 255){
 	// Host name to long
 	//debug_this("Host name to long for socks5 proxy.");
-	fwrite($client_socket, error_response('400 Bad Request',"Host name too long. Cannot exceed 255 bytes."));
+	$buffer['response'] =  error_response('400 Bad Request',"Host name too long. Cannot exceed 255 bytes.");
 	gracefully_terminate_child();
 }
 debug_this("Requesting proxy to connect to $host_name:$host_port.");
@@ -542,7 +542,7 @@ $bytes = strlen($buf);
 if($bytes !== fwrite($host_socket,$buf)){
 	//debug_this("Socks5 proxy returned error.");
 	log_this("Error 3 in communication with upstream proxy.", LOG_CRIT);
-	fwrite($client_socket, error_response('502 Bad Gateway',"Error 3 in communication with upstream proxy."));
+	$buffer['response'] =  error_response('502 Bad Gateway',"Error 3 in communication with upstream proxy.");
 	gracefully_terminate_child();
 }
 
@@ -566,7 +566,7 @@ while(strlen($buf) < 4){
 debug_this("Read ".strlen($buf)." bytes.");
 if(ord($buf[0]) !== 5){
 	debug_this("Socks5 proxy returned error.");
-	fwrite($client_socket, error_response('502 Bad Gateway',"Error in communication with upstream proxy."));
+	$buffer['response'] =  error_response('502 Bad Gateway',"Error in communication with upstream proxy.");
 	gracefully_terminate_child();
 }
 if(ord($buf[1]) !== 0 ){
@@ -580,8 +580,8 @@ if(ord($buf[1]) !== 0 ){
 							7 => 'Temporarily unable to communicate with the onion network',
 							8 => 'Address type not supported'
 	);
-	//fwrite($client_socket, error_response('502 Bad Gateway',"Upstream proxy returned error ".(ord($buf[1])%9)." '".$socks5errors[ord($buf[1])%9]."'."));
-	fwrite($client_socket, error_response('502 Bad Gateway',"Tor error(".(ord($buf[1])%9)."): ".$socks5errors[ord($buf[1])%9]));
+	//$buffer['response'] =  error_response('502 Bad Gateway',"Upstream proxy returned error ".(ord($buf[1])%9)." '".$socks5errors[ord($buf[1])%9]."'.");
+	$buffer['response'] =  error_response('502 Bad Gateway',"Upstream Proxy Error(".(ord($buf[1])%9)."): ".$socks5errors[ord($buf[1])%9]);
 	gracefully_terminate_child();
 }
 
@@ -624,7 +624,7 @@ switch(ord($buf[3])){
 
 // Search for hostname in loop blocklist
 if(in_array($host_name, $loop_blocklist)){
-		fwrite($client_socket,redirect_to('http://www.'.$GLOBALS['DOMAINNAME']));
+		$buffer['response'] = redirect_to('http://www.'.$GLOBALS['DOMAINNAME']);
 		gracefully_terminate_child();
 }
 
@@ -806,6 +806,8 @@ function forcefully_terminate_child(){
 		fwrite($client_socket, $buffer['response']);
 		stream_socket_shutdown($host_socket,STREAM_SHUT_RD); // Disable further receptions.
 		stream_socket_shutdown($client_socket, STREAM_SHUT_WR); // Disable further transmissions.
+		@fclose($host_socket);
+		@fclose($client_socket);
 	}elseif($host_socket && is_resource($host_socket)){
 		stream_set_blocking($host_socket, false);
 		fwrite($host_socket, $buffer['request']); // Empty buffer.
